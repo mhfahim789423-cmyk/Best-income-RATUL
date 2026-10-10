@@ -6,7 +6,7 @@
  <title> Bost Teacher Youtube  </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="//libtl.com/sdk.js" data-zone="9804827" data-sdk="show_9804827"></script>
+    <script src="https://libtl.com/sdk.js" data-zone="11997006" data-sdk="show_11997006"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -285,7 +285,7 @@
     <div id="coinContainer"></div>
 
     <!-- Ad Modal -->
-    <div id="adModal" class="ad-modal hidden">
+    <div id="adModal" class="ad-modal hidden" style="display:none;">
         <div class="ad-content">
             <div class="ad-timer" id="adTimer">30</div>
             <h3 class="text-xl font-bold text-center mb-4">বিজ্ঞাপন দেখছেন</h3>
@@ -298,7 +298,7 @@
             <div class="progress-bar">
                 <div id="progressFill" class="progress-fill"></div>
             </div>
-            <p class="text-center mt-4 text-sm text-gray-600">বিজ্ঞাপন শেষ হলে স্বয়ংক্রিয়ভাবে পুরস্কার পেয়ে যাবেন</p>
+            <p class="text-center mt-4 text-sm text-gray-600">বিজ্ঞাপন প্রদানকারীর নিয়ম অনুযায়ী পুরস্কার প্রযোজ্য হবে</p>
             <button id="closeAd" class="mt-4 w-full py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">বিজ্ঞাপন বন্ধ করুন</button>
         </div>
     </div>
@@ -619,13 +619,6 @@
             document.getElementById("userUsername").innerText = "@" + user.username;
             document.getElementById("userPhoto").src = user.photo;
 
-            // Load Zone ID dynamically
-            fetch("zone.json").then(r=>r.json()).then(data=>{
-                let script = document.createElement("script");
-                script.src = `https://ad.gigapub.tech/script?id=${data.zoneId}`;
-                document.body.appendChild(script);
-            });
-
             // Load user from users.json if exists
             fetch("users.json").then(r=>r.json()).then(users=>{
                 if(users[user.id]){
@@ -683,117 +676,66 @@
                 });
             });
             
+            let adInProgress = false;
+
             function showAdModal(adId = null) {
-                const modal = document.getElementById('adModal');
-                const timer = document.getElementById('adTimer');
-                const progressFill = document.getElementById('progressFill');
-                
-                modal.classList.remove('hidden');
-                
-                // Set ad duration and reward based on ad type
-                let duration = 30; // seconds
-                let reward = 0.10; // default reward
-                
-                if (adId) {
-                    // Different rewards for different ad types
-                    const rewards = {
-                        '1': 0.10,
-                        '2': 0.15,
-                        '3': 0.12,
-                        '4': 0.20
-                    };
-                    reward = rewards[adId] || 0.10;
+                if (adInProgress) return;
+                adInProgress = true;
+
+                const button = document.getElementById('watchAd');
+                if (button) button.disabled = true;
+
+                // Use the publisher's rewarded-popup SDK.
+                if (typeof window.show_11997006 !== 'function') {
+                    adInProgress = false;
+                    if (button) button.disabled = false;
+                    showNotification('বিজ্ঞাপন SDK লোড হয়নি। পেজটি রিফ্রেশ করে আবার চেষ্টা করুন।', 'error');
+                    return;
                 }
-                
-                // Start timer
-                let timeLeft = duration;
-                timer.innerText = timeLeft;
-                
-                const countdown = setInterval(() => {
-                    timeLeft--;
-                    timer.innerText = timeLeft;
-                    
-                    // Update progress bar
-                    const progress = ((duration - timeLeft) / duration) * 100;
-                    progressFill.style.width = `${progress}%`;
-                    
-                    if (timeLeft <= 0) {
-                        clearInterval(countdown);
+
+                window.show_11997006('pop')
+                    .then(() => {
+                        // The SDK promise resolved. Only grant the configured demo reward
+                        // if your ad provider's terms and callback semantics allow it.
+                        const reward = adId === '2' ? 0.15 :
+                                       adId === '3' ? 0.12 :
+                                       adId === '4' ? 0.20 : 0.10;
                         finishAd(reward);
-                    }
-                }, 1000);
-                
-                // Store the interval ID to clear it if needed
-                modal.dataset.countdown = countdown;
-                modal.dataset.reward = reward;
-                
-                // Load ad content
-                loadAdContent();
+                    })
+                    .catch((e) => {
+                        console.error('Rewarded ad error:', e);
+                        showNotification('বিজ্ঞাপন চালানো যায়নি। পরে আবার চেষ্টা করুন।', 'error');
+                    })
+                    .finally(() => {
+                        adInProgress = false;
+                        if (button) button.disabled = false;
+                    });
             }
-            
-            function loadAdContent() {
-                // This is where you would integrate with Monetag or other ad networks
-                // For demonstration, we'll simulate loading an ad
-                const adContainer = document.getElementById('adContainer');
-                
-                // Simulate ad loading
-                setTimeout(() => {
-                    adContainer.innerHTML = `
-                        <div class="bg-gradient-to-r from-blue-400 to-purple-500 h-64 rounded-lg flex flex-col items-center justify-center text-white p-4">
-                            <h3 class="text-xl font-bold mb-2">বিশেষ অফার!</h3>
-                            <p class="text-center mb-4">নতুন অ্যাপ ডাউনলোড করুন এবং ৫০% ছাড় পান</p>
-                            <div class="bg-white text-purple-600 font-bold py-2 px-6 rounded-full">
-                                এখনই ডাউনলোড করুন
-                            </div>
-                        </div>
-                    `;
-                }, 1000);
-            }
-            
+
             function finishAd(reward) {
-                // Update user balance
                 user.balance += reward;
                 user.totalAds++;
                 user.adsWatched++;
-                
-                // Save user data
                 saveUser();
                 updateUI();
-                
-                // Close ad modal
-                closeAdModal();
-                
-                // Show reward animation
                 showRewardAnimation(reward);
             }
-            
+
             function closeAdModal() {
-                const modal = document.getElementById('adModal');
-                const countdown = modal.dataset.countdown;
-                
-                if (countdown) {
-                    clearInterval(countdown);
-                }
-                
-                modal.classList.add('hidden');
-                
-                // Reset progress bar
-                document.getElementById('progressFill').style.width = '0%';
+                // The provider controls its own popup; do not fabricate a timer-based reward.
+                document.getElementById('adModal').classList.add('hidden');
             }
-            
+
             function showRewardAnimation(reward) {
                 const animation = document.getElementById('rewardAnimation');
                 const rewardAmount = document.getElementById('rewardAmount');
-                
                 rewardAmount.innerText = `${reward.toFixed(2)} ৳ উপার্জন করেছেন`;
                 animation.style.display = 'block';
-                
-                // Hide animation after 3 seconds
                 setTimeout(() => {
                     animation.style.display = 'none';
                 }, 3000);
             }
-            
+
             function updateUI(){
                 document.getElementById("balance").innerText = user.balance.toFixed(2)+" ৳";
                 document.getElementById("totalAds").innerText = user.totalAds;
@@ -832,4 +774,4 @@
         });
     </script>
 </body>
-</html>
+                </html>
